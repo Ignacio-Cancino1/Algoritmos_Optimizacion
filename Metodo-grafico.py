@@ -2,22 +2,91 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-# =========================================================
-# PARÁMETROS DEL PROBLEMA
-# =========================================================
-
-coef_objetivo = [2, 3]
-tipo_optimizacion = "max"
-restricciones = [
-    [-1, -1, -4, "<="],  # LD negativo: debería normalizarse a x1 + x2 >= 4
-    [1, 2, 12, "<="],
-    [1, 0, 0, ">="],
-    [0, 1, 0, ">="]
-]
-
-holgura = 0.2  # Nos permite agregar un margen alrededor del grafico
+holgura = 0.2      # Nos permite agregar un margen alrededor del grafico
 resolucion = 500
 tolerancia = 1e-6  # Tolerancia para comparaciones de casi-cero
+
+# =========================================================
+# ENTRADA DE DATOS POR CONSOLA
+# =========================================================
+
+def pedir_datos():
+    print("=" * 50)
+    print("   MÉTODO GRÁFICO - PROGRAMACIÓN LINEAL")
+    print("=" * 50)
+
+    # --- Función objetivo ---
+    while True:
+        try:
+            n_vars = int(input("\n¿Cuántas variables tiene el problema? (normalmente 2): "))
+            break
+        except ValueError:
+            print("  Error: ingrese un número entero.")
+
+    coef_objetivo = []
+    for i in range(1, n_vars + 1):
+        while True:
+            try:
+                c = float(input(f"  Coeficiente de x{i} en la función objetivo: "))
+                coef_objetivo.append(c)
+                break
+            except ValueError:
+                print("  Error: ingrese un número.")
+
+    while True:
+        tipo = input("\nTipo de optimización (max / min): ").strip().lower()
+        if tipo in ("max", "min"):
+            tipo_optimizacion = tipo
+            break
+        print("  Error: ingrese 'max' o 'min'.")
+
+    # --- Restricciones ---
+    print("\nNota: las restricciones de no negatividad (x1 >= 0, x2 >= 0)")
+    print("      se agregan automáticamente. No las ingrese.")
+
+    while True:
+        try:
+            n_rest = int(input("\n¿Cuántas restricciones tiene el problema (sin contar no negatividad)? "))
+            break
+        except ValueError:
+            print("  Error: ingrese un número entero.")
+
+    restricciones = []
+    for i in range(1, n_rest + 1):
+        print(f"\n  Restricción {i}:")
+        while True:
+            try:
+                a = float(input("    Coeficiente de x1: "))
+                break
+            except ValueError:
+                print("    Error: ingrese un número.")
+        while True:
+            try:
+                b = float(input("    Coeficiente de x2: "))
+                break
+            except ValueError:
+                print("    Error: ingrese un número.")
+        while True:
+            try:
+                c = float(input("    Lado derecho (LD): "))
+                break
+            except ValueError:
+                print("    Error: ingrese un número.")
+        while True:
+            signo = input("    Signo (<=, >= o =): ").strip()
+            if signo in ("<=", ">=", "="):
+                break
+            print("    Error: ingrese '<=', '>=' o '='.")
+        restricciones.append([a, b, c, signo])
+
+    # Restricciones de no negatividad automáticas
+    restricciones.append([1, 0, 0, ">="])
+    restricciones.append([0, 1, 0, ">="])
+
+    return coef_objetivo, tipo_optimizacion, restricciones
+
+
+coef_objetivo, tipo_optimizacion, restricciones = pedir_datos()
 
 # =========================================================
 # FUNCIONES
