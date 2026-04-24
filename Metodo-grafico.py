@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -16,8 +17,9 @@ restricciones = [
     [0, 1, 0, ">="]     # x2 >= 0
 ]
 
-holgura = 0.2  # Nos permite agregar un margen alrededor del grafico    
+holgura = 0.2  # Nos permite agregar un margen alrededor del grafico
 resolucion = 500
+tolerancia = 1e-6  # Tolerancia para comparaciones de casi-cero
 
 # =========================================================
 # FUNCIONES
@@ -28,17 +30,17 @@ def funcion_objetivo(punto, coef):
     return coef[0] * x1 + coef[1] * x2
 
 
-def es_factible(punto, restricciones):
-    x1, x2 = punto  #Separamos los valores de los puntos a y b 
+def es_factible(punto, restricciones, tolerancia=1e-6):
+    x1, x2 = punto  #Separamos los valores de los puntos a y b
 
-    for a, b, c, signo in restricciones:    #recorremos cada restriccion y aplicamos la formula 
+    for a, b, c, signo in restricciones:    #recorremos cada restriccion y aplicamos la formula
         valor = a * x1 + b * x2
 
-        if signo == "<=" and valor > c + 1e-6: # si el signo es <= el resultado de la formula no puede ser mayor que c
+        if signo == "<=" and valor > c and not math.isclose(valor, c, rel_tol=tolerancia, abs_tol=tolerancia): # si el signo es <= el resultado de la formula no puede ser mayor que c
             return False
-        elif signo == ">=" and valor < c - 1e-6: # si el signo es >= el resultado de la formula es menor que c 
+        elif signo == ">=" and valor < c and not math.isclose(valor, c, rel_tol=tolerancia, abs_tol=tolerancia): # si el signo es >= el resultado de la formula es menor que c
             return False
-        elif signo == "=" and abs(valor - c) > 1e-6: # si el signo es =, entonces estan practicamente igual
+        elif signo == "=" and not math.isclose(valor, c, rel_tol=tolerancia, abs_tol=tolerancia): # si el signo es =, entonces estan practicamente igual
             return False
 
     return True
@@ -50,21 +52,33 @@ def ordenar_poligono(puntos):  #ordenamos los puntos del poligono para que quede
     return sorted(puntos, key=lambda p: np.arctan2(p[1] - cy, p[0] - cx))   #calculo el angulo  para poder ordenarlo alrededor de la region factible 
 
 
-def quitar_duplicados(puntos, tolerancia=1e-6):  # quito los puntos que este repetidos en la intersecciones o sean casi iguales 
-    unicos = [] # variable para almacenar los puntos 
+def quitar_duplicados(puntos, tolerancia=1e-6):  # quito los puntos que este repetidos en la intersecciones o sean casi iguales
+    unicos = [] # variable para almacenar los puntos
     for p in puntos:
         repetido = False
         for q in unicos:
-            if abs(p[0] - q[0]) < tolerancia and abs(p[1] - q[1]) < tolerancia:# si la diferencia es pequeña lo considero repetido
+            if math.isclose(p[0], q[0], rel_tol=tolerancia, abs_tol=tolerancia) and math.isclose(p[1], q[1], rel_tol=tolerancia, abs_tol=tolerancia): # si la diferencia es pequeña lo considero repetido
                 repetido = True
                 break
-        if not repetido:  # si no esta repetido lo agrego a unicos 
+        if not repetido:  # si no esta repetido lo agrego a unicos
             unicos.append(p)
     return unicos
 
 
-def texto_restriccion(a, b, c, signo):  # lo uso para mostarlo por la terminal y en las leyendas de la grafica 
+def texto_restriccion(a, b, c, signo):  # lo uso para mostarlo por la terminal y en las leyendas de la grafica
     return f"{a}x1 + {b}x2 {signo} {c}"
+
+
+def normalizar_restricciones(restricciones, tolerancia=1e-6):  # si el LD es negativo multiplica toda la fila por -1 e invierte el signo
+    normalizadas = []
+    for i, (a, b, c, signo) in enumerate(restricciones, start=1):
+        if c < 0 and not math.isclose(c, 0, rel_tol=tolerancia, abs_tol=tolerancia):
+            signo_nuevo = ">=" if signo == "<=" else "<=" if signo == ">=" else signo
+            normalizadas.append([-a, -b, -c, signo_nuevo])
+            print(f"  [Normalización] R{i}: LD negativo → se multiplicó por -1 y el signo cambió a '{signo_nuevo}'")
+        else:
+            normalizadas.append([a, b, c, signo])
+    return normalizadas
 
 
 # =========================================================
@@ -80,6 +94,13 @@ for i, (a, b, c, signo) in enumerate(restricciones, start=1):
     print(f"R{i}: {texto_restriccion(a, b, c, signo)}")
 
 # =========================================================
+# NORMALIZAR RESTRICCIONES
+# =========================================================
+
+print("\nNORMALIZACIÓN DE RESTRICCIONES:")
+restricciones = normalizar_restricciones(restricciones, tolerancia)
+
+# =========================================================
 # CALCULAR INTERSECCIONES
 # =========================================================
 
@@ -92,12 +113,12 @@ for i in range(len(restricciones)):
 
         D = a1 * b2 - a2 * b1   # Calculo la determinante 
 
-        if abs(D) > 1e-9:  # Regla de cramer 
+        if not math.isclose(D, 0, rel_tol=tolerancia, abs_tol=tolerancia):  # Regla de cramer
             x = (c1 * b2 - c2 * b1) / D
             y = (a1 * c2 - a2 * c1) / D
             intersecciones.append((x, y))
 
-intersecciones = quitar_duplicados(intersecciones) # elimino intersecciones repetidas 
+intersecciones = quitar_duplicados(intersecciones, tolerancia) # elimino intersecciones repetidas
 
 print("\nINTERSECCIONES:")  # Las muestras  por consola 
 for p in intersecciones:
@@ -107,12 +128,12 @@ for p in intersecciones:
 # FILTRAR PUNTOS FACTIBLES
 # =========================================================
 
-puntos_factibles = [p for p in intersecciones if es_factible(p, restricciones)]
+puntos_factibles = [p for p in intersecciones if es_factible(p, restricciones, tolerancia)]
 
-if es_factible((0, 0), restricciones): # agrego el origen manualmente porque puede pertenecer al region factible 
+if es_factible((0, 0), restricciones, tolerancia): # agrego el origen manualmente porque puede pertenecer al region factible
     puntos_factibles.append((0, 0))
 
-puntos_factibles = quitar_duplicados(puntos_factibles) # elimino duplicados 
+puntos_factibles = quitar_duplicados(puntos_factibles, tolerancia) # elimino duplicados
 
 print("\nPUNTOS FACTIBLES:")  
 for p in puntos_factibles:
@@ -190,11 +211,11 @@ region = np.ones_like(xx, dtype=bool)
   # Recorro y veo si cumple las restricciones o no 
 for a, b, c, signo in restricciones:
     if signo == "<=":
-        region &= (a * xx + b * yy <= c + 1e-6)
+        region &= (a * xx + b * yy <= c + tolerancia)
     elif signo == ">=":
-        region &= (a * xx + b * yy >= c - 1e-6)
+        region &= (a * xx + b * yy >= c - tolerancia)
     elif signo == "=":
-        region &= (np.abs(a * xx + b * yy - c) <= 1e-6)
+        region &= (np.abs(a * xx + b * yy - c) <= tolerancia)
 
 # =========================================================
 # GRAFICAR
@@ -212,18 +233,18 @@ x_vals = np.linspace(xmin, xmax, resolucion)
 for i, (a, b, c, signo) in enumerate(restricciones, start=1):
     etiqueta = f"R{i}: {texto_restriccion(a, b, c, signo)}" 
 
-    if abs(b) > 1e-9:
-        y_vals = (c - a * x_vals) / b # veo como formar la recta  
+    if not math.isclose(b, 0, rel_tol=tolerancia, abs_tol=tolerancia):
+        y_vals = (c - a * x_vals) / b # veo como formar la recta
         plt.plot(x_vals, y_vals, linewidth=2, label=etiqueta)
     else:
-        x_recta = c / a # veo si la recta es vertical 
+        x_recta = c / a # veo si la recta es vertical
         plt.axvline(x=x_recta, linewidth=2, label=etiqueta)
 
 # =========================================================
 # FUNCIÓN OBJETIVO ÓPTIMA
 # =========================================================
 
-if abs(coef_objetivo[1]) > 1e-9:
+if not math.isclose(coef_objetivo[1], 0, rel_tol=tolerancia, abs_tol=tolerancia):
     y_obj = (mejor_valor - coef_objetivo[0] * x_vals) / coef_objetivo[1]
     plt.plot(
         x_vals,
@@ -247,14 +268,14 @@ for p in puntos_ordenados:
     plt.plot(p[0], p[1], 'ro', markersize=7)
 
     # Si es el punto óptimo, su etiqueta la pone el bloque de abajo
-    if abs(p[0] - mejor_punto[0]) < 1e-6 and abs(p[1] - mejor_punto[1]) < 1e-6:
+    if math.isclose(p[0], mejor_punto[0], rel_tol=tolerancia, abs_tol=tolerancia) and math.isclose(p[1], mejor_punto[1], rel_tol=tolerancia, abs_tol=tolerancia):
         continue
 
     # Vector desde el centroide hacia el vértice (dirección "hacia afuera")
     vx = p[0] - cx
     vy = p[1] - cy
     norma = np.hypot(vx, vy)
-    if norma > 1e-9:
+    if not math.isclose(norma, 0, rel_tol=tolerancia, abs_tol=tolerancia):
         vx, vy = vx / norma, vy / norma
     else:
         vx, vy = 1.0, 0.0
@@ -292,7 +313,7 @@ plt.plot(mejor_punto[0], mejor_punto[1], 'bo', markersize=12, label="Punto ópti
 vx_opt = mejor_punto[0] - cx
 vy_opt = mejor_punto[1] - cy
 norma_opt = np.hypot(vx_opt, vy_opt)
-if norma_opt > 1e-9:
+if not math.isclose(norma_opt, 0, rel_tol=tolerancia, abs_tol=tolerancia):
     vx_opt, vy_opt = vx_opt / norma_opt, vy_opt / norma_opt
 else:
     vx_opt, vy_opt = 1.0, 0.0
