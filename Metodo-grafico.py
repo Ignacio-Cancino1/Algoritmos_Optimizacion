@@ -6,15 +6,13 @@ import matplotlib.pyplot as plt
 # PARÁMETROS DEL PROBLEMA
 # =========================================================
 
-coef_objetivo = [3, 4]
-tipo_optimizacion = "max"  # "max" para maximizar, "min" para minimizar
-# cada restricciones  esta en formato a, b, c,  signo
+coef_objetivo = [2, 3]
+tipo_optimizacion = "max"
 restricciones = [
-    [-1, 2, 8, "<="],    # x1 <= 4
-    [3, -1, 16, ">="],   # 2x2 <= 12
-    [1, 1, 20, "<="],   # 3x1 + 2x2 <= 18
-    [1, 0, 0, ">="],    # x1 >= 0
-    [0, 1, 0, ">="]     # x2 >= 0
+    [-1, -1, -4, "<="],  # LD negativo: debería normalizarse a x1 + x2 >= 4
+    [1, 2, 12, "<="],
+    [1, 0, 0, ">="],
+    [0, 1, 0, ">="]
 ]
 
 holgura = 0.2  # Nos permite agregar un margen alrededor del grafico
@@ -69,6 +67,10 @@ def texto_restriccion(a, b, c, signo):  # lo uso para mostarlo por la terminal y
     return f"{a}x1 + {b}x2 {signo} {c}"
 
 
+def limpiar_cero(valor, tolerancia=1e-6):  # si el valor es casi cero retorna 0.0 exacto, evita que aparezca -0.0 en la visualización
+    return 0.0 if math.isclose(valor, 0, rel_tol=tolerancia, abs_tol=tolerancia) else valor
+
+
 def normalizar_restricciones(restricciones, tolerancia=1e-6):  # si el LD es negativo multiplica toda la fila por -1 e invierte el signo
     normalizadas = []
     for i, (a, b, c, signo) in enumerate(restricciones, start=1):
@@ -116,7 +118,7 @@ for i in range(len(restricciones)):
         if not math.isclose(D, 0, rel_tol=tolerancia, abs_tol=tolerancia):  # Regla de cramer
             x = (c1 * b2 - c2 * b1) / D
             y = (a1 * c2 - a2 * c1) / D
-            intersecciones.append((x, y))
+            intersecciones.append((limpiar_cero(x, tolerancia), limpiar_cero(y, tolerancia)))
 
 intersecciones = quitar_duplicados(intersecciones, tolerancia) # elimino intersecciones repetidas
 
