@@ -812,28 +812,3 @@ def pedir_datos():
 
 c, A, b, signos, tipo_optimizacion = pedir_datos()
 resolver_programacion_lineal(c, A, b, signos, tipo_optimizacion)
-
-
-#Ejemplo 3
-
-c = [5, 4]
-A = [[6, 4], [1, 2]]
-b = [24, 6]
-signos = ["<=", ">="]
-resolver_programacion_lineal(c, A, b, signos, tipo_optimizacion="max")
-
-#Ejemplo 4 
-
-c = [2, 3]
-A = [[1, 1], [1, 2]]
-b = [4, 6]
-signos = ["=", "<="]
-resolver_programacion_lineal(c, A, b, signos, tipo_optimizacion="max")
-
-
-
-#Ejemplo  5 c = [1, 1]
-A = [[1, 1], [1, 1]]
-b = [4, 6]
-signos = ["<=", ">="]
-resolver_programacion_lineal(c, A, b, signos, tipo_optimizacion="max")
