@@ -478,6 +478,8 @@ def resolver_dos_fases(c, A, b, signos, tipo_optimizacion="max", tolerancia=1e-6
     # multiplicada por el coeficiente de esa artificial en W.
     # Esto asegura que las variables basicas tengan coeficiente 0 en W.
     # ----------------------------------------------------------
+    imprimir_tabla(columnas, tabla, "TABLA INICIAL FASE 1 (antes de eliminacion gaussiana)")
+
     for i in range(1, len(tabla)):
         vb_actual = tabla[i][0]
         es_artificial = any(nombre == vb_actual for (_, nombre) in a_asignaciones)
