@@ -281,10 +281,14 @@ def obtener_solucion(columnas, tabla):
 # ----------------------------------------------------------
 # FUNCION: resolver con simplex normal
 # ----------------------------------------------------------
-def resolver_simplex(c, A, b, tolerancia=1e-6):
+def resolver_simplex(c, A, b, tipo_optimizacion="max", tolerancia=1e-6):
     """
     Resuelve completamente el problema por simplex normal.
     """
+
+    es_min = (tipo_optimizacion == "min")
+    if es_min:
+        c = [-coef for coef in c]
 
     columnas, tabla = construir_tabla_inicial(c, A, b)
 
@@ -330,6 +334,9 @@ def resolver_simplex(c, A, b, tolerancia=1e-6):
         iteracion += 1
 
     solucion = obtener_solucion(columnas, tabla)
+
+    if es_min:
+        solucion["Z"] = -solucion["Z"]
 
     print("\n" + "=" * 70)
     print("SOLUCION FINAL")
@@ -643,7 +650,7 @@ def resolver_programacion_lineal(c, A, b, signos, tipo_optimizacion="max", toler
     print(f"Metodo detectado: {metodo}")
 
     if metodo == "simplex":
-        return resolver_simplex(c, A, b, tolerancia)
+        return resolver_simplex(c, A, b, tipo_optimizacion, tolerancia)
     else:
         return resolver_dos_fases(c, A, b, signos, tipo_optimizacion, tolerancia)
 
