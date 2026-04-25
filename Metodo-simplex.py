@@ -286,9 +286,24 @@ def resolver_simplex(c, A, b, tipo_optimizacion="max", tolerancia=1e-6):
     Resuelve completamente el problema por simplex normal.
     """
 
+    c_original = c[:]
+
     es_min = (tipo_optimizacion == "min")
     if es_min:
         c = [-coef for coef in c]
+
+    print("\nPREPARACION DE VARIABLES:")
+    for i in range(len(b)):
+        print(f"  Restriccion {i+1} (<=): se agrega variable de holgura h{i+1}")
+
+    nombres_h = [f"h{i+1}" for i in range(len(b))]
+    print(f"\n  Variables de holgura agregadas: {', '.join(nombres_h)}")
+    print(f"  Variables de exceso agregadas : ninguna")
+    print(f"  Variables artificiales agregadas: ninguna")
+
+    terminos_z = ' + '.join(f"{c_original[i]}·x{i+1}" for i in range(len(c_original)))
+    tipo_str = "Maximizar" if not es_min else "Minimizar"
+    print(f"\nRESOLVIENDO: {tipo_str} Z = {terminos_z}")
 
     columnas, tabla = construir_tabla_inicial(c, A, b)
 
@@ -706,41 +721,119 @@ def resolver_programacion_lineal(c, A, b, signos, tipo_optimizacion="max", toler
         return resolver_dos_fases(c, A, b, signos, tipo_optimizacion, tolerancia)
 
 
-# ==========================================================
-# EJEMPLO 1: CASO SIMPLEX NORMAL
-# Resultado esperado: x1=2, x2=6, Z=360000
-# ==========================================================
+# ----------------------------------------------------------
+# FUNCION: pedir datos por consola
+# ----------------------------------------------------------
+def pedir_datos():
+    """
+    Solicita al usuario todos los datos del problema por consola.
+    Retorna: c, A, b, signos, tipo_optimizacion
+    """
 
-c = [30000, 50000]
+    print("\n" + "=" * 70)
+    print("INGRESO DE DATOS DEL PROBLEMA")
+    print("=" * 70)
 
-A = [
-    [1, 0],
-    [0, 2],
-    [3, 2]
-]
+    # Numero de variables de decision
+    while True:
+        try:
+            n = int(input("\nNumero de variables de decision: "))
+            if n > 0:
+                break
+            print("  Debe ser un entero positivo.")
+        except ValueError:
+            print("  Entrada invalida. Ingrese un entero positivo.")
 
-b = [4, 12, 18]
+    # Coeficientes de la funcion objetivo
+    c = []
+    for i in range(n):
+        while True:
+            try:
+                coef = float(input(f"  Coeficiente de x{i+1} en la funcion objetivo: "))
+                c.append(coef)
+                break
+            except ValueError:
+                print("  Entrada invalida. Ingrese un numero.")
 
-signos = ["<=", "<=", "<="]
+    # Tipo de optimizacion
+    while True:
+        tipo = input("\nTipo de optimizacion (max / min): ").strip().lower()
+        if tipo in ("max", "min"):
+            tipo_optimizacion = tipo
+            break
+        print("  Opcion invalida. Ingrese 'max' o 'min'.")
 
-resolver_programacion_lineal(c, A, b, signos)
+    # Numero de restricciones
+    while True:
+        try:
+            m = int(input("\nNumero de restricciones: "))
+            if m > 0:
+                break
+            print("  Debe ser un entero positivo.")
+        except ValueError:
+            print("  Entrada invalida. Ingrese un entero positivo.")
+
+    # Datos de cada restriccion
+    A = []
+    b = []
+    signos = []
+
+    for i in range(m):
+        print(f"\n  Restriccion {i+1}:")
+
+        fila = []
+        for j in range(n):
+            while True:
+                try:
+                    coef = float(input(f"    Coeficiente de x{j+1}: "))
+                    fila.append(coef)
+                    break
+                except ValueError:
+                    print("    Entrada invalida. Ingrese un numero.")
+        A.append(fila)
+
+        while True:
+            try:
+                ld = float(input(f"    Lado derecho (LD): "))
+                b.append(ld)
+                break
+            except ValueError:
+                print("    Entrada invalida. Ingrese un numero.")
+
+        while True:
+            signo = input(f"    Signo (<=, >= o =): ").strip()
+            if signo in ("<=", ">=", "="):
+                signos.append(signo)
+                break
+            print("    Signo invalido. Ingrese '<=', '>=' o '='.")
+
+    return c, A, b, signos, tipo_optimizacion
 
 
-# ==========================================================
-# EJEMPLO 2: DOS FASES MINIMIZACION
-# Resultado esperado: x1=3, x2=2, Z=0.66
-# ==========================================================
+c, A, b, signos, tipo_optimizacion = pedir_datos()
+resolver_programacion_lineal(c, A, b, signos, tipo_optimizacion)
 
-c = [0.12, 0.15]
 
-A = [
-    [60, 60],
-    [12, 6],
-    [10, 30]
-]
+#Ejemplo 3
 
-b = [300, 36, 90]
+c = [5, 4]
+A = [[6, 4], [1, 2]]
+b = [24, 6]
+signos = ["<=", ">="]
+resolver_programacion_lineal(c, A, b, signos, tipo_optimizacion="max")
 
-signos = [">=", ">=", ">="]
+#Ejemplo 4 
 
-resolver_programacion_lineal(c, A, b, signos, tipo_optimizacion="min")
+c = [2, 3]
+A = [[1, 1], [1, 2]]
+b = [4, 6]
+signos = ["=", "<="]
+resolver_programacion_lineal(c, A, b, signos, tipo_optimizacion="max")
+
+
+
+#Ejemplo  5 c = [1, 1]
+A = [[1, 1], [1, 1]]
+b = [4, 6]
+signos = ["<=", ">="]
+resolver_programacion_lineal(c, A, b, signos, tipo_optimizacion="max")
