@@ -414,6 +414,30 @@ def resolver_dos_fases(c, A, b, signos, tipo_optimizacion="max", tolerancia=1e-6
             a_num += 1
             a_asignaciones.append((i, f"a{a_num}"))
 
+    print("\nPREPARACION DE VARIABLES:")
+    for i, signo in enumerate(signos):
+        if signo == "<=":
+            nombre_h = next(nombre for (ri, nombre) in h_asignaciones if ri == i)
+            print(f"  Restriccion {i+1} (<=): se agrega variable de holgura {nombre_h}")
+        elif signo == ">=":
+            nombre_e = next(nombre for (ri, nombre) in e_asignaciones if ri == i)
+            nombre_a = next(nombre for (ri, nombre) in a_asignaciones if ri == i)
+            print(f"  Restriccion {i+1} (>=): se agrega variable de exceso {nombre_e} y variable artificial {nombre_a}")
+        elif signo == "=":
+            nombre_a = next(nombre for (ri, nombre) in a_asignaciones if ri == i)
+            print(f"  Restriccion {i+1} (=): se agrega variable artificial {nombre_a}")
+
+    nombres_h = [nombre for (_, nombre) in h_asignaciones]
+    nombres_e = [nombre for (_, nombre) in e_asignaciones]
+    nombres_a = [nombre for (_, nombre) in a_asignaciones]
+
+    print(f"\n  Variables de holgura agregadas  : {', '.join(nombres_h) if nombres_h else 'ninguna'}")
+    print(f"  Variables de exceso agregadas   : {', '.join(nombres_e) if nombres_e else 'ninguna'}")
+    print(f"  Variables artificiales agregadas: {', '.join(nombres_a) if nombres_a else 'ninguna'}")
+
+    terminos_w = ' + '.join(nombres_a)
+    print(f"\nFASE 1: Minimizar W = {terminos_w}")
+
     # ----------------------------------------------------------
     # PASO 2 - Construir columnas y tabla de Fase 1
     # Orden: VB, W, x1..xn, h1..hh, e1..ee, a1..aa, LD
@@ -502,9 +526,17 @@ def resolver_dos_fases(c, A, b, signos, tipo_optimizacion="max", tolerancia=1e-6
 
         if col_pivote == -1:
             print("\nNo hay coeficientes negativos en W. Fin de Fase 1.")
+            print("\nRESULTADO FASE 1:")
+            w_final_preview = tabla[0][-1]
+            if abs(w_final_preview) <= tolerancia:
+                print(f"  W = {w_final_preview:.4f} → El problema ES factible, se puede continuar a Fase 2.")
+            else:
+                print(f"  W = {w_final_preview:.4f} → El problema NO es factible, no existe solucion.")
             break
 
         print(f"\nVariable entrante: {columnas[col_pivote]}")
+        print(f"Columna pivote (indice Python): {col_pivote}")
+        print(f"Valor en fila objetivo: {tabla[0][col_pivote]}")
 
         fila_pivote, razon_minima = encontrar_fila_pivote(tabla, col_pivote, tolerancia)
 
@@ -513,7 +545,9 @@ def resolver_dos_fases(c, A, b, signos, tipo_optimizacion="max", tolerancia=1e-6
             return None
 
         print(f"\nVariable saliente: {tabla[fila_pivote][0]}")
+        print(f"Fila pivote (indice Python): {fila_pivote}")
         print(f"Razon minima positiva: {razon_minima}")
+        print(f"Elemento pivote: {tabla[fila_pivote][col_pivote]}")
 
         tabla = pivotear(tabla, fila_pivote, col_pivote, columnas, tolerancia)
         imprimir_tabla(columnas, tabla, f"TABLA FASE 1 - ITERACION {iteracion}")
@@ -527,6 +561,17 @@ def resolver_dos_fases(c, A, b, signos, tipo_optimizacion="max", tolerancia=1e-6
     if abs(w_final) > tolerancia:
         print("\nEl problema no tiene solucion factible")
         return None
+
+    print("\nTRANSICION A FASE 2:")
+    print(f"  Se eliminan las columnas artificiales: {', '.join(nombres_a)}")
+
+    tipo_str = "Maximizar" if not es_min else "Minimizar"
+    c_original = [-coef for coef in c] if es_min else c
+    terminos_z = ' + '.join(f"{c_original[i]}·x{i+1}" for i in range(n))
+    print(f"  Se restaura la funcion objetivo original: {tipo_str} Z = {terminos_z}")
+    print(f"  Se aplica eliminacion gaussiana en fila Z para limpiar variables basicas en la base...")
+
+    print("\nFASE 2: Optimizar funcion objetivo original")
 
     # ----------------------------------------------------------
     # PASO 6 - Construir tabla de Fase 2
@@ -592,6 +637,8 @@ def resolver_dos_fases(c, A, b, signos, tipo_optimizacion="max", tolerancia=1e-6
             break
 
         print(f"\nVariable entrante: {columnas[col_pivote]}")
+        print(f"Columna pivote (indice Python): {col_pivote}")
+        print(f"Valor en fila objetivo: {tabla[0][col_pivote]}")
 
         fila_pivote, razon_minima = encontrar_fila_pivote(tabla, col_pivote, tolerancia)
 
@@ -600,7 +647,9 @@ def resolver_dos_fases(c, A, b, signos, tipo_optimizacion="max", tolerancia=1e-6
             return None
 
         print(f"\nVariable saliente: {tabla[fila_pivote][0]}")
+        print(f"Fila pivote (indice Python): {fila_pivote}")
         print(f"Razon minima positiva: {razon_minima}")
+        print(f"Elemento pivote: {tabla[fila_pivote][col_pivote]}")
 
         tabla = pivotear(tabla, fila_pivote, col_pivote, columnas, tolerancia)
         imprimir_tabla(columnas, tabla, f"TABLA FASE 2 - ITERACION {iteracion}")
