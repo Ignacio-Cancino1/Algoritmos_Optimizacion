@@ -490,6 +490,52 @@ def imprimir_forma_aumentada(c_original, A, b, h_asignaciones, e_asignaciones, a
 
 
 # ----------------------------------------------------------
+# FUNCION: normalizar lados derechos negativos
+# Si algun lado derecho es negativo, multiplica esa restriccion
+# por -1 e invierte su signo para dejar todos los LD >= 0.
+# ----------------------------------------------------------
+def normalizar_lados_derechos(A, b, signos):
+    """
+    Preprocesa las restricciones para garantizar que todos los lados
+    derechos sean no negativos, condicion necesaria para construir
+    una tabla simplex con una base inicial valida.
+
+    Si b[i] < 0, multiplicar la restriccion por -1 invierte el signo:
+      a*x <= -k  ->  -a*x >= k
+      a*x >= -k  ->  -a*x <= k
+      a*x  = -k  ->  -a*x  = k
+
+    Parametros:
+        A     : matriz de coeficientes de las restricciones
+        b     : lista de lados derechos
+        signos: lista de signos de cada restriccion
+
+    Retorna:
+        A_nuevo, b_nuevo, signos_nuevo con todos los LD >= 0
+    """
+    inversion_signo = {"<=": ">=", ">=": "<=", "=": "="}
+
+    A_nuevo = []
+    b_nuevo = []
+    signos_nuevo = []
+
+    for i in range(len(b)):
+        if b[i] < 0:
+            signo_anterior = signos[i]
+            signo_nuevo = inversion_signo[signo_anterior]
+            A_nuevo.append([-coef for coef in A[i]])
+            b_nuevo.append(-b[i])
+            signos_nuevo.append(signo_nuevo)
+            print(f"  [Normalizacion] Restriccion {i+1}: LD negativo → se multiplico por -1 y el signo cambio de '{signo_anterior}' a '{signo_nuevo}'")
+        else:
+            A_nuevo.append(A[i][:])
+            b_nuevo.append(b[i])
+            signos_nuevo.append(signos[i])
+
+    return A_nuevo, b_nuevo, signos_nuevo
+
+
+# ----------------------------------------------------------
 # FUNCION: resolver con simplex normal
 # Aplica el algoritmo simplex clasico para problemas
 # de maximizacion con restricciones <= y LD positivo.
@@ -527,6 +573,12 @@ def resolver_simplex(c, A, b, tipo_optimizacion="max", tolerancia=1e-6):
     es_min = (tipo_optimizacion == "min")
     if es_min:
         c = [-coef for coef in c]   # negamos todos los coeficientes
+
+    A, b, signos_normalizados = normalizar_lados_derechos(A, b, ["<="] * len(b))
+    if any(s != "<=" for s in signos_normalizados):
+        print("\nTras normalizar LDs negativos, hay restricciones >= que requieren dos fases.")
+        print("Redirigiendo automaticamente al metodo de dos fases...")
+        return resolver_dos_fases(c_original, A, b, signos_normalizados, tipo_optimizacion, tolerancia)
 
     # Informamos al usuario que variables auxiliares se agregaron.
     # En simplex normal todas las restricciones son <= y solo se agregan holguras.
@@ -690,6 +742,8 @@ def resolver_dos_fases(c, A, b, signos, tipo_optimizacion="max", tolerancia=1e-6
     if es_min:
         # Negamos los coeficientes: minimizar Z = c*x  <=>  maximizar Z' = -c*x
         c = [-coef for coef in c]
+
+    A, b, signos = normalizar_lados_derechos(A, b, signos)
 
     # ----------------------------------------------------------
     # PASO 1 - Identificar que variables agregar por restriccion
